@@ -1,38 +1,48 @@
 const axios = require('axios');
 
-// Usar Binance API (gratuita, sin límites estrictos)
-const BINANCE_API = 'https://api.binance.com/api/v3';
+// Usar CryptoCompare API (sin restricciones geográficas)
+const CRYPTOCOMPARE_API = 'https://min-api.cryptocompare.com/data';
 
 /**
- * Obtener velas (candlesticks) de Binance
+ * Obtener velas (candlesticks) de CryptoCompare
  */
-async function getVelas(simbolo = 'BTCUSDT', intervalo = '1h', limite = 100) {
+async function getVelas(simbolo = 'BTC', intervalo = '1h', limite = 100) {
     try {
-        const url = `${BINANCE_API}/klines`;
+        const apiKey = process.env.CRYPTOCOMPARE_API_KEY;
+
+        // Determinar endpoint según intervalo
+        let endpoint = 'v2/histohour'; // Por defecto 1h
+        if (intervalo === '1d') endpoint = 'v2/histoday';
+        if (intervalo === '4h') endpoint = 'v2/histohour';
+
+        const url = `${CRYPTOCOMPARE_API}/${endpoint}`;
         const response = await axios.get(url, {
             params: {
-                symbol: simbolo,
-                interval: intervalo,
-                limit: limite
+                fsym: simbolo,
+                tsym: 'USD',
+                limit: limite,
+                api_key: apiKey
             },
             timeout: 10000
         });
 
-        // Formato de respuesta de Binance:
-        // [timestamp, open, high, low, close, volume, closeTime, ...]
-        const velas = response.data.map(vela => ({
-            timestamp: vela[0],
-            open: parseFloat(vela[1]),
-            high: parseFloat(vela[2]),
-            low: parseFloat(vela[3]),
-            close: parseFloat(vela[4]),
-            volume: parseFloat(vela[5])
+        if (!response.data || !response.data.Data || !response.data.Data.Data) {
+            throw new Error('Respuesta inválida de CryptoCompare');
+        }
+
+        const velas = response.data.Data.Data.map(vela => ({
+            timestamp: vela.time * 1000, // Convertir a milisegundos
+            open: vela.open,
+            high: vela.high,
+            low: vela.low,
+            close: vela.close,
+            volume: vela.volumeto
         }));
 
         return velas;
     } catch (error) {
-        console.error('Error obteniendo velas de Binance:', error.message);
-        throw new Error('Error al obtener datos históricos de Binance');
+        console.error('Error obteniendo velas de CryptoCompare:', error.message);
+        throw new Error('Error al obtener datos históricos de CryptoCompare');
     }
 }
 
@@ -41,28 +51,32 @@ async function getVelas(simbolo = 'BTCUSDT', intervalo = '1h', limite = 100) {
  */
 async function getPrecioActual() {
     try {
-        const url = `${BINANCE_API}/ticker/24hr`;
+        const apiKey = process.env.CRYPTOCOMPARE_API_KEY;
+        const url = `${CRYPTOCOMPARE_API}/pricemultifull`;
+
         const response = await axios.get(url, {
             params: {
-                symbol: 'BTCUSDT'
+                fsyms: 'BTC',
+                tsyms: 'USD',
+                api_key: apiKey
             },
             timeout: 10000
         });
 
-        const data = response.data;
+        const data = response.data.RAW.BTC.USD;
 
         return {
-            precio: parseFloat(data.lastPrice),
-            cambio24h: parseFloat(data.priceChangePercent),
-            volumen24h: parseFloat(data.volume),
-            precioAlto24h: parseFloat(data.highPrice),
-            precioBajo24h: parseFloat(data.lowPrice),
-            precioBajo: parseFloat(data.bidPrice),
-            precioAlto: parseFloat(data.askPrice)
+            precio: data.PRICE,
+            cambio24h: data.CHANGEPCT24HOUR,
+            volumen24h: data.VOLUME24HOURTO,
+            precioAlto24h: data.HIGH24HOUR,
+            precioBajo24h: data.LOW24HOUR,
+            precioBajo: data.LOW24HOUR,
+            precioAlto: data.HIGH24HOUR
         };
     } catch (error) {
-        console.error('Error obteniendo precio de Binance:', error.message);
-        throw new Error('Error al obtener precio actual de Binance');
+        console.error('Error obteniendo precio de CryptoCompare:', error.message);
+        throw new Error('Error al obtener precio actual de CryptoCompare');
     }
 }
 
@@ -71,17 +85,15 @@ async function getPrecioActual() {
  */
 async function getDatosHistoricos(dias = 7) {
     try {
-        // Binance usa intervalos, no días directos
-        // Para 7 días con datos cada hora: 7 * 24 = 168 velas
-        const limite = dias * 24;
-        const velas = await getVelas('BTCUSDT', '1h', limite);
+        const limite = dias * 24; // Horas
+        const velas = await getVelas('BTC', '1h', limite);
 
         return velas.map(vela => ({
             fecha: new Date(vela.timestamp),
             precio: vela.close
         }));
     } catch (error) {
-        console.error('Error obteniendo histórico de Binance:', error.message);
+        console.error('Error obteniendo histórico de CryptoCompare:', error.message);
         throw new Error('Error al obtener datos históricos');
     }
 }
