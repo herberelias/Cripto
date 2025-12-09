@@ -1,11 +1,11 @@
 const cron = require('node-cron');
 const { generarSenal, guardarSenal } = require('../services/generadorSenales');
 
-// Ejecutar cada 30 segundos
+// Ejecutar cada 5 minutos
 function iniciarCronSenales() {
-    console.log('🔄 Cron de señales iniciado - Se ejecutará cada 30 segundos');
+    console.log('🔄 Cron de señales iniciado - Se ejecutará cada 5 minutos');
 
-    cron.schedule('*/30 * * * * *', async () => {
+    cron.schedule('*/5 * * * *', async () => {
         try {
             console.log('⏰ Ejecutando análisis de señales...');
 
