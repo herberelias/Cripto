@@ -1,7 +1,7 @@
 const cron = require('node-cron');
 const { generarSenal, guardarSenal } = require('../services/generadorSenales');
 
-// Ejecutar cada 5 minutos
+// Ejecutar cada 5 minutos (ahora con Binance API que tiene mejores límites)
 function iniciarCronSenales() {
     console.log('🔄 Cron de señales iniciado - Se ejecutará cada 5 minutos');
 
