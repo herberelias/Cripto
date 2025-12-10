@@ -1,22 +1,23 @@
 const cron = require('node-cron');
 const { verificarSenales } = require('../services/verificacionService');
+const logger = require('../utils/logger');
 
 /**
- * Cron job para verificar señales cada hora
- * Ejecuta a los minutos 5, 15, 25, 35, 45, 55 de cada hora
+ * Cron job para verificar señales cada 10 minutos
+ * Verifica si alcanzaron TP1, TP2, TP3 o Stop Loss
  */
 function iniciarVerificacionCron() {
     // Ejecutar cada 10 minutos
     cron.schedule('*/10 * * * *', async () => {
-        console.log('⏰ Ejecutando verificación de señales...');
+        logger.debug('Verificando resultados de señales activas...');
         try {
             await verificarSenales();
         } catch (error) {
-            console.error('Error en cron de verificación:', error);
+            logger.error('Error en verificación de señales:', error);
         }
     });
 
-    console.log('✅ Cron de verificación de señales iniciado (cada 10 minutos)');
+    logger.info('✅ Verificación de señales iniciada (cada 10 minutos)');
 }
 
 module.exports = { iniciarVerificacionCron };

@@ -62,7 +62,7 @@ async function getSenalesActivas(req, res) {
             [usuarioId]
         );
 
-        const probabilidadMinima = config[0]?.probabilidad_minima || 30; // Cambiado de 70 a 30 para testing
+        const probabilidadMinima = config[0]?.probabilidad_minima || 50; // Umbral realista para trading confiable
         const ratioMinimo = config[0]?.ratio_riesgo_beneficio_minimo || 2.0;
 
         // Obtener señales activas que cumplan los filtros

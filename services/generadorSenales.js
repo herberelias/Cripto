@@ -5,7 +5,7 @@ const indicadorService = require('./indicadorService');
 // Generar señal basada en indicadores técnicos
 async function generarSenal(timeframe = '1h') {
     try {
-        // Obtener velas históricas
+        // Obtener velas históricas del timeframe principal
         const velas = await precioService.getVelas('BTC', timeframe, 200);
 
         if (velas.length < 200) {
@@ -13,8 +13,29 @@ async function generarSenal(timeframe = '1h') {
             return null;
         }
 
-        // Calcular indicadores
+        // Obtener velas de timeframe superior (4h) para análisis de tendencia general
+        const velas4h = await precioService.getVelas('BTC', '4h', 100);
+        
+        if (velas4h.length < 50) {
+            console.log('No hay suficientes datos del timeframe superior');
+            return null;
+        }
+
+        // Calcular indicadores del timeframe principal
         const indicadores = indicadorService.calcularIndicadores(velas);
+        
+        // Calcular indicadores del timeframe superior para filtro de tendencia
+        const indicadores4h = indicadorService.calcularIndicadores(velas4h);
+        
+        // Análisis de tendencia general (timeframe superior)
+        let tendenciaGeneral = 'neutral';
+        if (indicadores4h.ema20 > indicadores4h.ema50 && indicadores4h.ema50 > indicadores4h.ema200) {
+            tendenciaGeneral = 'alcista';
+        } else if (indicadores4h.ema20 < indicadores4h.ema50 && indicadores4h.ema50 < indicadores4h.ema200) {
+            tendenciaGeneral = 'bajista';
+        }
+        
+        console.log(`📊 Tendencia general (4h): ${tendenciaGeneral.toUpperCase()}`);
 
         // Sistema de puntuación
         let puntuacion = 0;
@@ -71,23 +92,22 @@ async function generarSenal(timeframe = '1h') {
             razonesShort.push('Precio en banda superior de Bollinger');
         }
 
-        // 6. Volumen (10 puntos)
-        if (indicadores.volumenActual > indicadores.volumenPromedio * 1.3) {
-            puntuacion += 10;
-            razonesLong.push(`Volumen alto (${((indicadores.volumenActual / indicadores.volumenPromedio - 1) * 100).toFixed(0)}% sobre promedio)`);
-            razonesShort.push(`Volumen alto (${((indicadores.volumenActual / indicadores.volumenPromedio - 1) * 100).toFixed(0)}% sobre promedio)`);
-        }
+        // 6. Volumen alto indica actividad, pero NO dirección (NEUTRAL)
+        // Solo se usa para dar más peso si hay volumen de confirmación
+        const volumenAlto = indicadores.volumenActual > indicadores.volumenPromedio * 1.3;
+        const factorVolumen = volumenAlto ? 1.2 : 1.0; // Multiplicador para otros indicadores
 
-        // 7. Análisis de Volumen (15 puntos)
+        // 7. Análisis de Volumen con Dirección (15 puntos)
         const volumenPromedio = velas.slice(-20).reduce((sum, v) => sum + v.volumeto, 0) / 20;
         const volumenActual = velas[velas.length - 1].volumeto;
         const volumenRelativo = volumenActual / volumenPromedio;
 
         if (volumenRelativo > 1.5) {
-            puntuacion += 15;
             if (velas[velas.length - 1].close > velas[velas.length - 1].open) {
+                puntuacion += 15;
                 razonesLong.push('Volumen alcista fuerte');
             } else {
+                puntuacion += 15;
                 razonesShort.push('Volumen bajista fuerte');
             }
         }
@@ -100,17 +120,32 @@ async function generarSenal(timeframe = '1h') {
         const cuerpoUltima = Math.abs(ultimaVela.close - ultimaVela.open);
         const mechaSupUltima = ultimaVela.high - Math.max(ultimaVela.open, ultimaVela.close);
         const mechaInfUltima = Math.min(ultimaVela.open, ultimaVela.close) - ultimaVela.low;
+        const rangoVela = ultimaVela.high - ultimaVela.low;
+        const esVelaAlcista = ultimaVela.close > ultimaVela.open;
+        const esVelaBajista = ultimaVela.close < ultimaVela.open;
+        
+        // Contexto de tendencia
+        const enTendenciaBajista = precioActual < indicadores.ema50;
+        const enTendenciaAlcista = precioActual > indicadores.ema50;
 
-        // Martillo alcista (mecha inferior larga, cuerpo pequeño arriba)
-        if (mechaInfUltima > 2 * cuerpoUltima && mechaSupUltima < cuerpoUltima * 0.5) {
+        // Martillo alcista (mecha inferior larga, cuerpo pequeño arriba, vela alcista, en tendencia bajista)
+        if (mechaInfUltima > 2 * cuerpoUltima && 
+            mechaSupUltima < cuerpoUltima * 0.5 && 
+            cuerpoUltima > rangoVela * 0.1 && // Cuerpo mínimo 10% del rango
+            esVelaAlcista &&
+            enTendenciaBajista) {
             puntuacion += 15;
-            razonesLong.push('Patrón martillo alcista');
+            razonesLong.push('Patrón martillo alcista válido');
         }
 
-        // Estrella fugaz bajista (mecha superior larga, cuerpo pequeño abajo)
-        if (mechaSupUltima > 2 * cuerpoUltima && mechaInfUltima < cuerpoUltima * 0.5) {
+        // Estrella fugaz bajista (mecha superior larga, cuerpo pequeño abajo, vela bajista, en tendencia alcista)
+        if (mechaSupUltima > 2 * cuerpoUltima && 
+            mechaInfUltima < cuerpoUltima * 0.5 && 
+            cuerpoUltima > rangoVela * 0.1 && // Cuerpo mínimo 10% del rango
+            esVelaBajista &&
+            enTendenciaAlcista) {
             puntuacion += 15;
-            razonesShort.push('Patrón estrella fugaz bajista');
+            razonesShort.push('Patrón estrella fugaz bajista válido');
         }
 
         // Envolvente alcista
@@ -151,44 +186,73 @@ async function generarSenal(timeframe = '1h') {
             razonesShort.push('Patrón tres cuervos negros');
         }
 
-        // 9. Divergencias RSI (20 puntos)
-        const rsiActual = indicadores.rsi;
-        const rsiAnterior = velas.length > 50 ? await indicadorService.calcularRSI(velas.slice(-50, -1)) : rsiActual;
-        const precioActualDivergencia = ultimaVela.close;
-        const precioAnterior = velas[velas.length - 50]?.close || precioActualDivergencia;
+        // 9. Divergencias RSI - DESHABILITADO (implementación incorrecta)
+        // TODO: Implementar correctamente buscando picos locales en precio y RSI
+        // Requiere: identificar mínimos/máximos relativos, comparar al menos 2-3 picos
+        // Por ahora se omite para evitar señales falsas
 
-        // Divergencia alcista: precio baja pero RSI sube
-        if (precioActualDivergencia < precioAnterior && rsiActual > rsiAnterior && rsiActual < 40) {
-            puntuacion += 20;
-            razonesLong.push('Divergencia alcista RSI');
-        }
+        // Sistema de confirmación por categorías
+        const categoriaTendencia = {
+            long: razonesLong.filter(r => r.includes('EMA') || r.includes('MACD')).length,
+            short: razonesShort.filter(r => r.includes('EMA') || r.includes('MACD')).length
+        };
+        
+        const categoriaMomentum = {
+            long: razonesLong.filter(r => r.includes('RSI') || r.includes('Volumen')).length,
+            short: razonesShort.filter(r => r.includes('RSI') || r.includes('Volumen')).length
+        };
+        
+        const categoriaPatrones = {
+            long: razonesLong.filter(r => r.includes('Patrón') || r.includes('Bollinger')).length,
+            short: razonesShort.filter(r => r.includes('Patrón') || r.includes('Bollinger')).length
+        };
 
-        // Divergencia bajista: precio sube pero RSI baja
-        if (precioActualDivergencia > precioAnterior && rsiActual < rsiAnterior && rsiActual > 60) {
-            puntuacion += 20;
-            razonesShort.push('Divergencia bajista RSI');
-        }
+        // Contar categorías confirmadas (al menos 1 razón en la categoría)
+        const categoriasLong = (categoriaTendencia.long > 0 ? 1 : 0) + 
+                               (categoriaMomentum.long > 0 ? 1 : 0) + 
+                               (categoriaPatrones.long > 0 ? 1 : 0);
+        
+        const categoriasShort = (categoriaTendencia.short > 0 ? 1 : 0) + 
+                                (categoriaMomentum.short > 0 ? 1 : 0) + 
+                                (categoriaPatrones.short > 0 ? 1 : 0);
 
-        // Determinar tipo de señal
+        // Determinar tipo de señal con sistema de confirmación
         let tipoSenal = null;
         let razones = [];
         let probabilidad = 0;
 
-        if (razonesLong.length > razonesShort.length && puntuacion >= 30) {
+        // Requiere al menos 2 de 3 categorías alineadas + puntuación mínima 40
+        if (categoriasLong >= 2 && razonesLong.length > razonesShort.length && puntuacion >= 40) {
             tipoSenal = 'LONG';
             razones = razonesLong;
-            probabilidad = Math.min(95, puntuacion);
-        } else if (razonesShort.length > razonesLong.length && puntuacion >= 30) {
+            // Aplicar factor de volumen si hay volumen alto
+            probabilidad = Math.min(95, Math.round(puntuacion * factorVolumen));
+        } else if (categoriasShort >= 2 && razonesShort.length > razonesLong.length && puntuacion >= 40) {
             tipoSenal = 'SHORT';
             razones = razonesShort;
-            probabilidad = Math.min(95, puntuacion);
+            probabilidad = Math.min(95, Math.round(puntuacion * factorVolumen));
         }
 
         // Si no hay señal clara, retornar null
-        if (!tipoSenal || razones.length < 2) {
-            console.log(`Puntuación insuficiente: ${puntuacion}, Razones: ${razones.length}`);
+        if (!tipoSenal || razones.length < 3) {
+            console.log(`Señal rechazada - Puntuación: ${puntuacion}, Razones: ${razones.length}, Categorías: ${tipoSenal === 'LONG' ? categoriasLong : categoriasShort}`);
             return null;
         }
+
+        // Filtro de tendencia general - Solo tomar señales alineadas con tendencia superior
+        if (tendenciaGeneral === 'alcista' && tipoSenal === 'SHORT') {
+            console.log(`❌ Señal SHORT rechazada - Tendencia general es ALCISTA`);
+            return null;
+        } else if (tendenciaGeneral === 'bajista' && tipoSenal === 'LONG') {
+            console.log(`❌ Señal LONG rechazada - Tendencia general es BAJISTA`);
+            return null;
+        }
+        
+        // Bonus si está alineada con tendencia fuerte
+        if ((tendenciaGeneral === 'alcista' && tipoSenal === 'LONG') || 
+            (tendenciaGeneral === 'bajista' && tipoSenal === 'SHORT')) {
+            probabilidad = Math.min(95, probabilidad + 5);
+            razones.push(`Alineada con tendencia ${tendenciaGeneral} 4h`);
 
         // Calcular Stop Loss y Take Profits usando ATR
         const atr = indicadores.atr;
@@ -252,6 +316,70 @@ async function generarSenal(timeframe = '1h') {
     }
 }
 
+/**
+ * Validar señales activas (ejecutar cada 5 minutos)
+ * Verifica que las señales activas sigan siendo válidas según precio actual
+ * y puede invalidarlas si el contexto cambió drásticamente
+ */
+async function validarSenalesActivas() {
+    try {
+        const precioActual = await precioService.getPrecioActual();
+        const precio = precioActual.precio;
+
+        // Obtener señales activas de las últimas 2 horas
+        const [senales] = await db.query(`
+            SELECT s.*, i.rsi, i.ema_20, i.ema_50 
+            FROM senales s
+            LEFT JOIN indicadores_senal i ON s.id = i.senal_id
+            WHERE s.estado = 'activa' 
+            AND s.fecha_creacion > DATE_SUB(NOW(), INTERVAL 2 HOUR)
+        `);
+
+        if (senales.length === 0) {
+            return;
+        }
+
+        for (const senal of senales) {
+            let debeInvalidarse = false;
+            let motivoInvalidacion = '';
+
+            // Validación 1: Precio se movió demasiado desde la entrada (>5%)
+            const movimientoPorcentaje = Math.abs((precio - senal.precio_entrada) / senal.precio_entrada * 100);
+            if (movimientoPorcentaje > 5) {
+                debeInvalidarse = true;
+                motivoInvalidacion = `Precio se movió ${movimientoPorcentaje.toFixed(1)}% desde entrada`;
+            }
+
+            // Validación 2: Ya alcanzó stop loss (aunque verificación cada 10 min lo detectará)
+            if (senal.tipo === 'LONG' && precio <= senal.stop_loss) {
+                debeInvalidarse = true;
+                motivoInvalidacion = 'Stop Loss alcanzado';
+            } else if (senal.tipo === 'SHORT' && precio >= senal.stop_loss) {
+                debeInvalidarse = true;
+                motivoInvalidacion = 'Stop Loss alcanzado';
+            }
+
+            // Validación 3: Contexto de mercado cambió (verificar con datos recientes)
+            // Esto requeriría análisis en tiempo real más complejo
+            // Por ahora solo validamos movimientos de precio extremos
+
+            if (debeInvalidarse) {
+                await db.query(`
+                    UPDATE senales 
+                    SET estado = 'invalidada', 
+                        notas = CONCAT(COALESCE(notas, ''), ' - Invalidada: ${motivoInvalidacion}')
+                    WHERE id = ?
+                `, [senal.id]);
+
+                console.log(`⚠️  Señal #${senal.id} (${senal.tipo}) invalidada: ${motivoInvalidacion}`);
+            }
+        }
+
+    } catch (error) {
+        console.error('Error validando señales activas:', error);
+    }
+}
+
 // Guardar señal en base de datos
 async function guardarSenal(senal) {
     try {
@@ -307,5 +435,6 @@ async function guardarSenal(senal) {
 
 module.exports = {
     generarSenal,
-    guardarSenal
+    guardarSenal,
+    validarSenalesActivas
 };

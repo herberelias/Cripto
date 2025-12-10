@@ -38,39 +38,94 @@ async function verificarSenales() {
 }
 
 /**
- * Verificar una señal individual
+ * Verificar una señal individual con salida parcial escalonada
  */
 async function verificarSenal(senal, precioActual) {
     try {
         let resultado = 'pendiente';
         let tipoCierre = null;
         let precioAlcanzado = null;
+        let porcentajeCerrado = 0;
+        let gananciaParcial = 0;
 
-        // Verificar si alcanzó take profit
-        if (senal.tipo === 'LONG' && precioActual >= senal.take_profit_3) {
-            resultado = 'ganadora';
-            tipoCierre = 'take_profit';
-            precioAlcanzado = senal.take_profit_3;
-        } else if (senal.tipo === 'SHORT' && precioActual <= senal.take_profit_3) {
-            resultado = 'ganadora';
-            tipoCierre = 'take_profit';
-            precioAlcanzado = senal.take_profit_3;
+        // Sistema de salida parcial escalonada (más realista)
+        if (senal.tipo === 'LONG') {
+            // TP3 - Cerrar 100% (objetivo completo)
+            if (precioActual >= senal.take_profit_3) {
+                resultado = 'ganadora';
+                tipoCierre = 'take_profit_3';
+                precioAlcanzado = senal.take_profit_3;
+                porcentajeCerrado = 100;
+                gananciaParcial = ((senal.take_profit_3 - senal.precio_entrada) / senal.precio_entrada * 100);
+            }
+            // TP2 - Cerrar 60% adicional (90% total)
+            else if (precioActual >= senal.take_profit_2) {
+                resultado = 'ganadora';
+                tipoCierre = 'take_profit_2';
+                precioAlcanzado = senal.take_profit_2;
+                porcentajeCerrado = 90;
+                gananciaParcial = ((senal.take_profit_2 - senal.precio_entrada) / senal.precio_entrada * 100) * 0.9;
+            }
+            // TP1 - Cerrar 30% (asegurar ganancias)
+            else if (precioActual >= senal.take_profit_1) {
+                resultado = 'ganadora';
+                tipoCierre = 'take_profit_1';
+                precioAlcanzado = senal.take_profit_1;
+                porcentajeCerrado = 30;
+                gananciaParcial = ((senal.take_profit_1 - senal.precio_entrada) / senal.precio_entrada * 100) * 0.3;
+            }
+            // Stop Loss
+            else if (precioActual <= senal.stop_loss) {
+                resultado = 'perdedora';
+                tipoCierre = 'stop_loss';
+                precioAlcanzado = senal.stop_loss;
+                porcentajeCerrado = 100;
+                gananciaParcial = ((senal.stop_loss - senal.precio_entrada) / senal.precio_entrada * 100);
+            }
+        } else { // SHORT
+            // TP3 - Cerrar 100%
+            if (precioActual <= senal.take_profit_3) {
+                resultado = 'ganadora';
+                tipoCierre = 'take_profit_3';
+                precioAlcanzado = senal.take_profit_3;
+                porcentajeCerrado = 100;
+                gananciaParcial = ((senal.precio_entrada - senal.take_profit_3) / senal.precio_entrada * 100);
+            }
+            // TP2 - Cerrar 60% adicional
+            else if (precioActual <= senal.take_profit_2) {
+                resultado = 'ganadora';
+                tipoCierre = 'take_profit_2';
+                precioAlcanzado = senal.take_profit_2;
+                porcentajeCerrado = 90;
+                gananciaParcial = ((senal.precio_entrada - senal.take_profit_2) / senal.precio_entrada * 100) * 0.9;
+            }
+            // TP1 - Cerrar 30%
+            else if (precioActual <= senal.take_profit_1) {
+                resultado = 'ganadora';
+                tipoCierre = 'take_profit_1';
+                precioAlcanzado = senal.take_profit_1;
+                porcentajeCerrado = 30;
+                gananciaParcial = ((senal.precio_entrada - senal.take_profit_1) / senal.precio_entrada * 100) * 0.3;
+            }
+            // Stop Loss
+            else if (precioActual >= senal.stop_loss) {
+                resultado = 'perdedora';
+                tipoCierre = 'stop_loss';
+                precioAlcanzado = senal.stop_loss;
+                porcentajeCerrado = 100;
+                gananciaParcial = ((senal.precio_entrada - senal.stop_loss) / senal.precio_entrada * 100);
+            }
         }
-        // Verificar si alcanzó stop loss
-        else if (senal.tipo === 'LONG' && precioActual <= senal.stop_loss) {
-            resultado = 'perdedora';
-            tipoCierre = 'stop_loss';
-            precioAlcanzado = senal.stop_loss;
-        } else if (senal.tipo === 'SHORT' && precioActual >= senal.stop_loss) {
-            resultado = 'perdedora';
-            tipoCierre = 'stop_loss';
-            precioAlcanzado = senal.stop_loss;
-        }
+        
         // Verificar si expiró
-        else if (new Date() > new Date(senal.fecha_expiracion)) {
+        if (resultado === 'pendiente' && new Date() > new Date(senal.fecha_expiracion)) {
             resultado = 'perdedora';
             tipoCierre = 'expiracion';
             precioAlcanzado = precioActual;
+            porcentajeCerrado = 100;
+            gananciaParcial = senal.tipo === 'LONG' ? 
+                ((precioActual - senal.precio_entrada) / senal.precio_entrada * 100) :
+                ((senal.precio_entrada - precioActual) / senal.precio_entrada * 100);
         }
 
         // Si hay resultado, guardarlo
@@ -87,7 +142,10 @@ async function verificarSenal(senal, precioActual) {
                 WHERE id = ?
             `, [resultado, precioAlcanzado, senal.id]);
 
-            console.log(`${resultado === 'ganadora' ? '✅' : '❌'} Señal #${senal.id} - ${resultado.toUpperCase()} (${tipoCierre})`);
+            const emoji = resultado === 'ganadora' ? '✅' : '❌';
+            const signo = gananciaParcial >= 0 ? '+' : '';
+            console.log(`${emoji} Señal #${senal.id} ${senal.tipo} - ${resultado.toUpperCase()}`);
+            console.log(`   ${tipoCierre} | Cerrado: ${porcentajeCerrado}% | Ganancia: ${signo}${gananciaParcial.toFixed(2)}%`);
         }
     } catch (error) {
         console.error(`Error verificando señal #${senal.id}:`, error);
@@ -193,8 +251,43 @@ async function actualizarRendimientoDiario() {
     }
 }
 
+/**
+ * Calcular tamaño de posición basado en gestión de riesgo
+ * @param {number} capitalTotal - Capital total disponible
+ * @param {number} riesgoPorOperacion - % de capital a arriesgar (default 1-2%)
+ * @param {number} precioEntrada - Precio de entrada
+ * @param {number} stopLoss - Precio de stop loss
+ * @returns {object} - Tamaño de posición y datos relacionados
+ */
+function calcularPositionSize(capitalTotal, riesgoPorOperacion, precioEntrada, stopLoss) {
+    // Calcular cuánto dinero estamos dispuestos a perder
+    const dineroEnRiesgo = capitalTotal * (riesgoPorOperacion / 100);
+    
+    // Calcular cuánto perdemos por unidad
+    const perdidaPorUnidad = Math.abs(precioEntrada - stopLoss);
+    
+    // Calcular cuántas unidades comprar
+    const unidades = dineroEnRiesgo / perdidaPorUnidad;
+    
+    // Calcular inversión total
+    const inversionTotal = unidades * precioEntrada;
+    
+    // Validar que no excedamos el capital
+    const porcentajeCapital = (inversionTotal / capitalTotal) * 100;
+    
+    return {
+        unidades: parseFloat(unidades.toFixed(8)),
+        inversionTotal: parseFloat(inversionTotal.toFixed(2)),
+        dineroEnRiesgo: parseFloat(dineroEnRiesgo.toFixed(2)),
+        porcentajeCapital: parseFloat(porcentajeCapital.toFixed(2)),
+        perdidaPorUnidad: parseFloat(perdidaPorUnidad.toFixed(2)),
+        valido: inversionTotal <= capitalTotal
+    };
+}
+
 module.exports = {
     verificarSenales,
     verificarSenal,
-    actualizarEstadisticas
+    actualizarEstadisticas,
+    calcularPositionSize
 };
