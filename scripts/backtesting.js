@@ -86,14 +86,14 @@ function simularSenal(velas, indiceActual, indicadores) {
         return null;
     }
 
-    // Calcular SL y TP usando ATR
-    const atr = indicadores.atr || (velaActual.high - velaActual.low);
+    // Calcular SL y TP usando rango de la vela como ATR aproximado
+    const rangoVela = velaActual.high - velaActual.low;
     const stopLoss = tipoSenal === 'LONG'
-        ? precioEntrada - (atr * 2)
-        : precioEntrada + (atr * 2);
+        ? precioEntrada - (rangoVela * 2)
+        : precioEntrada + (rangoVela * 2);
     const takeProfit = tipoSenal === 'LONG'
-        ? precioEntrada + (atr * 5)
-        : precioEntrada - (atr * 5);
+        ? precioEntrada + (rangoVela * 5)
+        : precioEntrada - (rangoVela * 5);
 
     return {
         tipo: tipoSenal,
@@ -173,7 +173,20 @@ async function ejecutarBacktesting() {
         const limite = MESES_HISTORICOS * 30 * 24; // Aproximado para 1h
         console.log(`📥 Obteniendo ${limite} velas históricas...`);
 
-        const velas = await precioService.getVelas('BTC', TIMEFRAME, limite);
+        const velasRaw = await precioService.getVelas('BTC', TIMEFRAME, limite);
+
+        // Asegurar que las velas tengan la estructura correcta
+        const velas = velasRaw.map(v => ({
+            timestamp: v.timestamp,
+            time: v.timestamp / 1000, // Para compatibilidad
+            open: v.open,
+            high: v.high,
+            low: v.low,
+            close: v.close,
+            volume: v.volume,
+            volumeto: v.volume
+        }));
+
         console.log(`✅ ${velas.length} velas obtenidas\n`);
 
         // Simular señales
@@ -226,7 +239,7 @@ async function ejecutarBacktesting() {
 
                 // Guardar detalle
                 resultados.detalles.push({
-                    fecha: new Date(velas[i].time * 1000).toISOString(),
+                    fecha: new Date(velas[i].timestamp).toISOString(),
                     tipo: senal.tipo,
                     puntuacion: senal.puntuacion,
                     precioEntrada: senal.precioEntrada,
@@ -248,6 +261,7 @@ async function ejecutarBacktesting() {
 
     } catch (error) {
         console.error('❌ Error en backtesting:', error);
+        throw error;
     }
 }
 
@@ -340,5 +354,6 @@ ejecutarBacktesting().then(() => {
     process.exit(0);
 }).catch(error => {
     console.error('\n❌ Error:', error);
+    console.error(error.stack);
     process.exit(1);
 });
