@@ -6,7 +6,7 @@ const indicadorService = require('./indicadorService');
 async function generarSenal(timeframe = '1h') {
     try {
         // Obtener velas históricas
-        const velas = await precioService.getVelas(timeframe, 200);
+        const velas = await precioService.getVelas('BTC', timeframe, 200);
 
         if (velas.length < 200) {
             console.log('No hay suficientes datos para análisis');
