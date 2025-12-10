@@ -11,8 +11,8 @@ const path = require('path');
 // Configuración
 const MESES_HISTORICOS = 1; // Reducido a 1 mes para evitar límite de API
 const TIMEFRAME = '1h';
-const UMBRAL_PUNTUACION = 30;
-const RAZONES_MINIMAS = 1;
+const UMBRAL_PUNTUACION = 50; // Ajustado según resultados de backtesting
+const RAZONES_MINIMAS = 3;    // Aumentado para mayor calidad
 
 // Resultados
 const resultados = {
