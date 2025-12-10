@@ -253,6 +253,7 @@ async function generarSenal(timeframe = '1h') {
             (tendenciaGeneral === 'bajista' && tipoSenal === 'SHORT')) {
             probabilidad = Math.min(95, probabilidad + 5);
             razones.push(`Alineada con tendencia ${tendenciaGeneral} 4h`);
+        }
 
         // Calcular Stop Loss y Take Profits usando ATR
         const atr = indicadores.atr;
