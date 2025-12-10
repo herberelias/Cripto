@@ -46,10 +46,10 @@ async function register(req, res) {
 
         const userId = result.insertId;
 
-        // Crear configuración por defecto
+        // Crear configuración por defecto (probabilidad mínima 30%)
         await db.query(
-            'INSERT INTO configuracion_usuario (usuario_id) VALUES (?)',
-            [userId]
+            'INSERT INTO configuracion_usuario (usuario_id, probabilidad_minima, ratio_riesgo_beneficio_minimo) VALUES (?, ?, ?)',
+            [userId, 30, 2.0]
         );
 
         // Crear balance virtual por defecto
