@@ -101,18 +101,18 @@ async function generarSenal(timeframe = '1h') {
         let razones = [];
         let probabilidad = 0;
 
-        if (razonesLong.length > razonesShort.length && puntuacion >= 50) {
+        if (razonesLong.length > razonesShort.length && puntuacion >= 30) {
             tipoSenal = 'LONG';
             razones = razonesLong;
             probabilidad = Math.min(95, puntuacion);
-        } else if (razonesShort.length > razonesLong.length && puntuacion >= 50) {
+        } else if (razonesShort.length > razonesLong.length && puntuacion >= 30) {
             tipoSenal = 'SHORT';
             razones = razonesShort;
             probabilidad = Math.min(95, puntuacion);
         }
 
         // Si no hay señal clara, retornar null
-        if (!tipoSenal || razones.length < 2) {
+        if (!tipoSenal || razones.length < 1) {
             console.log(`Puntuación insuficiente: ${puntuacion}, Razones: ${razones.length}`);
             return null;
         }
