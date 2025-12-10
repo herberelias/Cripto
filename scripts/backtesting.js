@@ -9,7 +9,7 @@ const path = require('path');
  */
 
 // Configuración
-const MESES_HISTORICOS = 3;
+const MESES_HISTORICOS = 1; // Reducido a 1 mes para evitar límite de API
 const TIMEFRAME = '1h';
 const UMBRAL_PUNTUACION = 30;
 const RAZONES_MINIMAS = 1;
