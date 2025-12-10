@@ -78,22 +78,95 @@ async function generarSenal(timeframe = '1h') {
             razonesShort.push(`Volumen alto (${((indicadores.volumenActual / indicadores.volumenPromedio - 1) * 100).toFixed(0)}% sobre promedio)`);
         }
 
-        // 7. Patrón de velas (10 puntos)
+        // 7. Análisis de Volumen (15 puntos)
+        const volumenPromedio = velas.slice(-20).reduce((sum, v) => sum + v.volumeto, 0) / 20;
+        const volumenActual = velas[velas.length - 1].volumeto;
+        const volumenRelativo = volumenActual / volumenPromedio;
+
+        if (volumenRelativo > 1.5) {
+            puntuacion += 15;
+            if (velas[velas.length - 1].close > velas[velas.length - 1].open) {
+                razonesLong.push('Volumen alcista fuerte');
+            } else {
+                razonesShort.push('Volumen bajista fuerte');
+            }
+        }
+
+        // 8. Patrones de velas mejorados (15 puntos)
         const ultimaVela = velas[velas.length - 1];
         const penultimaVela = velas[velas.length - 2];
+        const terceraVela = velas[velas.length - 3];
 
-        // Martillo alcista
-        if (ultimaVela.close > ultimaVela.open &&
-            (ultimaVela.close - ultimaVela.low) > 2 * (ultimaVela.high - ultimaVela.close)) {
-            puntuacion += 10;
+        const cuerpoUltima = Math.abs(ultimaVela.close - ultimaVela.open);
+        const mechaSupUltima = ultimaVela.high - Math.max(ultimaVela.open, ultimaVela.close);
+        const mechaInfUltima = Math.min(ultimaVela.open, ultimaVela.close) - ultimaVela.low;
+
+        // Martillo alcista (mecha inferior larga, cuerpo pequeño arriba)
+        if (mechaInfUltima > 2 * cuerpoUltima && mechaSupUltima < cuerpoUltima * 0.5) {
+            puntuacion += 15;
             razonesLong.push('Patrón martillo alcista');
         }
 
-        // Estrella fugaz bajista
-        if (ultimaVela.close < ultimaVela.open &&
-            (ultimaVela.high - ultimaVela.close) > 2 * (ultimaVela.close - ultimaVela.low)) {
-            puntuacion += 10;
+        // Estrella fugaz bajista (mecha superior larga, cuerpo pequeño abajo)
+        if (mechaSupUltima > 2 * cuerpoUltima && mechaInfUltima < cuerpoUltima * 0.5) {
+            puntuacion += 15;
             razonesShort.push('Patrón estrella fugaz bajista');
+        }
+
+        // Envolvente alcista
+        if (penultimaVela.close < penultimaVela.open && // Vela bajista
+            ultimaVela.close > ultimaVela.open && // Vela alcista
+            ultimaVela.open < penultimaVela.close &&
+            ultimaVela.close > penultimaVela.open) {
+            puntuacion += 15;
+            razonesLong.push('Patrón envolvente alcista');
+        }
+
+        // Envolvente bajista
+        if (penultimaVela.close > penultimaVela.open && // Vela alcista
+            ultimaVela.close < ultimaVela.open && // Vela bajista
+            ultimaVela.open > penultimaVela.close &&
+            ultimaVela.close < penultimaVela.open) {
+            puntuacion += 15;
+            razonesShort.push('Patrón envolvente bajista');
+        }
+
+        // Tres soldados blancos (alcista)
+        if (terceraVela.close > terceraVela.open &&
+            penultimaVela.close > penultimaVela.open &&
+            ultimaVela.close > ultimaVela.open &&
+            penultimaVela.close > terceraVela.close &&
+            ultimaVela.close > penultimaVela.close) {
+            puntuacion += 15;
+            razonesLong.push('Patrón tres soldados blancos');
+        }
+
+        // Tres cuervos negros (bajista)
+        if (terceraVela.close < terceraVela.open &&
+            penultimaVela.close < penultimaVela.open &&
+            ultimaVela.close < ultimaVela.open &&
+            penultimaVela.close < terceraVela.close &&
+            ultimaVela.close < penultimaVela.close) {
+            puntuacion += 15;
+            razonesShort.push('Patrón tres cuervos negros');
+        }
+
+        // 9. Divergencias RSI (20 puntos)
+        const rsiActual = indicadores.rsi;
+        const rsiAnterior = velas.length > 50 ? await indicadorService.calcularRSI(velas.slice(-50, -1)) : rsiActual;
+        const precioActualDivergencia = ultimaVela.close;
+        const precioAnterior = velas[velas.length - 50]?.close || precioActualDivergencia;
+
+        // Divergencia alcista: precio baja pero RSI sube
+        if (precioActualDivergencia < precioAnterior && rsiActual > rsiAnterior && rsiActual < 40) {
+            puntuacion += 20;
+            razonesLong.push('Divergencia alcista RSI');
+        }
+
+        // Divergencia bajista: precio sube pero RSI baja
+        if (precioActualDivergencia > precioAnterior && rsiActual < rsiAnterior && rsiActual > 60) {
+            puntuacion += 20;
+            razonesShort.push('Divergencia bajista RSI');
         }
 
         // Determinar tipo de señal

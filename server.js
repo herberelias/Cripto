@@ -4,6 +4,7 @@ require('dotenv').config();
 
 const { iniciarCronSenales } = require('./cron/senalCron');
 const { iniciarVerificacionCron } = require('./cron/verificacionCron');
+const { iniciarCalibracionCron } = require('./cron/calibracionCron');
 
 const app = express();
 
@@ -23,7 +24,7 @@ app.use('/api/estadisticas', require('./routes/estadisticas'));
 app.get('/', (req, res) => {
     res.json({
         message: 'Crypto Señales API',
-        version: '1.0.0',
+        version: '2.0.0',
         status: 'running',
         endpoints: {
             auth: '/api/auth',
@@ -54,4 +55,7 @@ app.listen(PORT, () => {
 
     // Iniciar cron de verificación
     iniciarVerificacionCron();
+
+    // Iniciar cron de calibración
+    iniciarCalibracionCron();
 });
