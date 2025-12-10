@@ -174,11 +174,11 @@ async function generarSenal(timeframe = '1h') {
         let razones = [];
         let probabilidad = 0;
 
-        if (razonesLong.length > razonesShort.length && puntuacion >= 40) {
+        if (razonesLong.length > razonesShort.length && puntuacion >= 30) {
             tipoSenal = 'LONG';
             razones = razonesLong;
             probabilidad = Math.min(95, puntuacion);
-        } else if (razonesShort.length > razonesLong.length && puntuacion >= 40) {
+        } else if (razonesShort.length > razonesLong.length && puntuacion >= 30) {
             tipoSenal = 'SHORT';
             razones = razonesShort;
             probabilidad = Math.min(95, puntuacion);
