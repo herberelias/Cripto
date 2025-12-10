@@ -3,6 +3,7 @@ const cors = require('cors');
 require('dotenv').config();
 
 const { iniciarCronSenales } = require('./cron/senalCron');
+const { iniciarVerificacionCron } = require('./cron/verificacionCron');
 
 const app = express();
 
@@ -16,6 +17,7 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/senales', require('./routes/senales'));
 app.use('/api/trades', require('./routes/trades'));
 app.use('/api/config', require('./routes/config'));
+app.use('/api/estadisticas', require('./routes/estadisticas'));
 
 // Ruta de prueba
 app.get('/', (req, res) => {
@@ -27,7 +29,8 @@ app.get('/', (req, res) => {
             auth: '/api/auth',
             senales: '/api/senales',
             trades: '/api/trades',
-            config: '/api/config'
+            config: '/api/config',
+            estadisticas: '/api/estadisticas'
         }
     });
 });
@@ -48,4 +51,7 @@ app.listen(PORT, () => {
 
     // Iniciar cron de señales
     iniciarCronSenales();
+
+    // Iniciar cron de verificación
+    iniciarVerificacionCron();
 });
