@@ -11,9 +11,9 @@ async function getVelas(simbolo = 'BTC', intervalo = '1h', limite = 100) {
         const apiKey = process.env.CRYPTOCOMPARE_API_KEY;
 
         // Determinar endpoint según intervalo
-        let endpoint = 'v2/histohour'; // Por defecto 1h
-        if (intervalo === '1d') endpoint = 'v2/histoday';
-        if (intervalo === '4h') endpoint = 'v2/histohour';
+        let endpoint = 'histohour'; // Por defecto 1h (sin v2)
+        if (intervalo === '1d') endpoint = 'histoday';
+        if (intervalo === '4h') endpoint = 'histohour';
 
         const url = `${CRYPTOCOMPARE_API}/${endpoint}`;
         const response = await axios.get(url, {
@@ -26,11 +26,15 @@ async function getVelas(simbolo = 'BTC', intervalo = '1h', limite = 100) {
             timeout: 10000
         });
 
-        if (!response.data || !response.data.Data || !response.data.Data.Data) {
+        console.log('Respuesta de CryptoCompare:', JSON.stringify(response.data).substring(0, 200));
+
+        // CryptoCompare v1 API usa response.data.Data directamente
+        if (!response.data || !response.data.Data) {
+            console.error('Estructura de respuesta:', response.data);
             throw new Error('Respuesta inválida de CryptoCompare');
         }
 
-        const velas = response.data.Data.Data.map(vela => ({
+        const velas = response.data.Data.map(vela => ({
             timestamp: vela.time * 1000, // Convertir a milisegundos
             open: vela.open,
             high: vela.high,
@@ -42,6 +46,9 @@ async function getVelas(simbolo = 'BTC', intervalo = '1h', limite = 100) {
         return velas;
     } catch (error) {
         console.error('Error obteniendo velas de CryptoCompare:', error.message);
+        if (error.response) {
+            console.error('Respuesta del servidor:', error.response.data);
+        }
         throw new Error('Error al obtener datos históricos de CryptoCompare');
     }
 }
