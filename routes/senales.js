@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const authenticateToken = require('../middleware/auth');
 const {
+    generarSenalPrueba,
     getSenalesActivas,
     getHistorial,
     getSenal,
@@ -16,5 +17,8 @@ router.get('/historial', getHistorial);
 router.get('/precio/actual', getPrecioActual);
 router.get('/precio/historico', getHistorico);
 router.get('/:id', getSenal);
+
+// Ruta de prueba para generar señal manual
+router.post('/generar-prueba', generarSenalPrueba);
 
 module.exports = router;
