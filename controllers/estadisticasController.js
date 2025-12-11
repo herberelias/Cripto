@@ -8,8 +8,8 @@ async function getEstadisticasGlobales(req, res) {
         const [stats] = await db.query(`
             SELECT 
                 COUNT(*) as total_senales,
-                SUM(CASE WHEN resultado = 'ganadora' THEN 1 ELSE 0 END) as ganadoras,
-                SUM(CASE WHEN resultado = 'perdedora' THEN 1 ELSE 0 END) as perdedoras,
+                SUM(CASE WHEN resultado = 'ganancia' THEN 1 ELSE 0 END) as ganadoras,
+                SUM(CASE WHEN resultado = 'perdida' THEN 1 ELSE 0 END) as perdedoras,
                 SUM(CASE WHEN resultado = 'pendiente' THEN 1 ELSE 0 END) as pendientes
             FROM resultado_senales
         `);
@@ -69,8 +69,8 @@ async function getEstadisticasPorTipo(req, res) {
             SELECT 
                 s.tipo,
                 COUNT(*) as total,
-                SUM(CASE WHEN r.resultado = 'ganadora' THEN 1 ELSE 0 END) as ganadoras,
-                SUM(CASE WHEN r.resultado = 'perdedora' THEN 1 ELSE 0 END) as perdedoras
+                SUM(CASE WHEN r.resultado = 'ganancia' THEN 1 ELSE 0 END) as ganadoras,
+                SUM(CASE WHEN r.resultado = 'perdida' THEN 1 ELSE 0 END) as perdedoras
             FROM senales s
             INNER JOIN resultado_senales r ON s.id = r.senal_id
             WHERE r.resultado != 'pendiente'

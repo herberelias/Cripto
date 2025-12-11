@@ -86,8 +86,8 @@ function senal(tipo, message, data = null) {
 }
 
 function trade(tipo, resultado, message, data = null) {
-    const emoji = resultado === 'ganadora' ? '✅' : '❌';
-    const color = resultado === 'ganadora' ? colors.green : colors.red;
+    const emoji = resultado === 'ganancia' ? '✅' : '❌';
+    const color = resultado === 'ganancia' ? colors.green : colors.red;
     console.log(`${colors.dim}[${getTimestamp()}]${colors.reset} ${color}${emoji} ${tipo}${colors.reset} ${message}`);
     if (data) console.log(data);
 }

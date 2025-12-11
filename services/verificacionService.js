@@ -52,7 +52,7 @@ async function verificarSenal(senal, precioActual) {
         if (senal.tipo === 'LONG') {
             // TP3 - Cerrar 100% (objetivo completo)
             if (precioActual >= senal.take_profit_3) {
-                resultado = 'ganadora';
+                resultado = 'ganancia';
                 tipoCierre = 'take_profit_3';
                 precioAlcanzado = senal.take_profit_3;
                 porcentajeCerrado = 100;
@@ -60,7 +60,7 @@ async function verificarSenal(senal, precioActual) {
             }
             // TP2 - Cerrar 60% adicional (90% total)
             else if (precioActual >= senal.take_profit_2) {
-                resultado = 'ganadora';
+                resultado = 'ganancia';
                 tipoCierre = 'take_profit_2';
                 precioAlcanzado = senal.take_profit_2;
                 porcentajeCerrado = 90;
@@ -68,7 +68,7 @@ async function verificarSenal(senal, precioActual) {
             }
             // TP1 - Cerrar 30% (asegurar ganancias)
             else if (precioActual >= senal.take_profit_1) {
-                resultado = 'ganadora';
+                resultado = 'ganancia';
                 tipoCierre = 'take_profit_1';
                 precioAlcanzado = senal.take_profit_1;
                 porcentajeCerrado = 30;
@@ -76,7 +76,7 @@ async function verificarSenal(senal, precioActual) {
             }
             // Stop Loss
             else if (precioActual <= senal.stop_loss) {
-                resultado = 'perdedora';
+                resultado = 'perdida';
                 tipoCierre = 'stop_loss';
                 precioAlcanzado = senal.stop_loss;
                 porcentajeCerrado = 100;
@@ -85,7 +85,7 @@ async function verificarSenal(senal, precioActual) {
         } else { // SHORT
             // TP3 - Cerrar 100%
             if (precioActual <= senal.take_profit_3) {
-                resultado = 'ganadora';
+                resultado = 'ganancia';
                 tipoCierre = 'take_profit_3';
                 precioAlcanzado = senal.take_profit_3;
                 porcentajeCerrado = 100;
@@ -93,7 +93,7 @@ async function verificarSenal(senal, precioActual) {
             }
             // TP2 - Cerrar 60% adicional
             else if (precioActual <= senal.take_profit_2) {
-                resultado = 'ganadora';
+                resultado = 'ganancia';
                 tipoCierre = 'take_profit_2';
                 precioAlcanzado = senal.take_profit_2;
                 porcentajeCerrado = 90;
@@ -101,7 +101,7 @@ async function verificarSenal(senal, precioActual) {
             }
             // TP1 - Cerrar 30%
             else if (precioActual <= senal.take_profit_1) {
-                resultado = 'ganadora';
+                resultado = 'ganancia';
                 tipoCierre = 'take_profit_1';
                 precioAlcanzado = senal.take_profit_1;
                 porcentajeCerrado = 30;
@@ -109,7 +109,7 @@ async function verificarSenal(senal, precioActual) {
             }
             // Stop Loss
             else if (precioActual >= senal.stop_loss) {
-                resultado = 'perdedora';
+                resultado = 'perdida';
                 tipoCierre = 'stop_loss';
                 precioAlcanzado = senal.stop_loss;
                 porcentajeCerrado = 100;
@@ -119,7 +119,7 @@ async function verificarSenal(senal, precioActual) {
         
         // Verificar si expiró
         if (resultado === 'pendiente' && new Date() > new Date(senal.fecha_expiracion)) {
-            resultado = 'perdedora';
+            resultado = 'perdida';
             tipoCierre = 'expiracion';
             precioAlcanzado = precioActual;
             porcentajeCerrado = 100;
@@ -142,7 +142,7 @@ async function verificarSenal(senal, precioActual) {
                 WHERE id = ?
             `, [resultado, precioAlcanzado, senal.id]);
 
-            const emoji = resultado === 'ganadora' ? '✅' : '❌';
+            const emoji = resultado === 'ganancia' ? '✅' : '❌';
             const signo = gananciaParcial >= 0 ? '+' : '';
             console.log(`${emoji} Señal #${senal.id} ${senal.tipo} - ${resultado.toUpperCase()}`);
             console.log(`   ${tipoCierre} | Cerrado: ${porcentajeCerrado}% | Ganancia: ${signo}${gananciaParcial.toFixed(2)}%`);
@@ -166,11 +166,11 @@ async function actualizarEstadisticas() {
             const [stats] = await db.query(`
                 SELECT 
                     COUNT(*) as total,
-                    SUM(CASE WHEN r.resultado = 'ganadora' THEN 1 ELSE 0 END) as ganadoras,
-                    SUM(CASE WHEN r.resultado = 'perdedora' THEN 1 ELSE 0 END) as perdedoras,
-                    AVG(CASE WHEN r.resultado = 'ganadora' THEN 
+                    SUM(CASE WHEN r.resultado = 'ganancia' THEN 1 ELSE 0 END) as ganadoras,
+                    SUM(CASE WHEN r.resultado = 'perdida' THEN 1 ELSE 0 END) as perdedoras,
+                    AVG(CASE WHEN r.resultado = 'ganancia' THEN 
                         ABS(s.precio_entrada - r.precio_alcanzado) ELSE 0 END) as ganancia_prom,
-                    AVG(CASE WHEN r.resultado = 'perdedora' THEN 
+                    AVG(CASE WHEN r.resultado = 'perdida' THEN 
                         ABS(s.precio_entrada - r.precio_alcanzado) ELSE 0 END) as perdida_prom
                 FROM senales s
                 INNER JOIN indicadores_senal i ON s.id = i.senal_id
@@ -230,8 +230,8 @@ async function actualizarRendimientoDiario() {
     const [stats] = await db.query(`
         SELECT 
             COUNT(*) as total,
-            SUM(CASE WHEN r.resultado = 'ganadora' THEN 1 ELSE 0 END) as ganadoras,
-            SUM(CASE WHEN r.resultado = 'perdedora' THEN 1 ELSE 0 END) as perdedoras
+            SUM(CASE WHEN r.resultado = 'ganancia' THEN 1 ELSE 0 END) as ganadoras,
+            SUM(CASE WHEN r.resultado = 'perdida' THEN 1 ELSE 0 END) as perdedoras
         FROM resultado_senales r
         WHERE DATE(r.fecha_verificacion) = ?
     `, [hoy]);
