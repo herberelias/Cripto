@@ -31,7 +31,7 @@ async function generarSenal(timeframe = '1h') {
         // Obtener timeframe superior dinámico según el principal
         const timeframeSuperior = getTimeframeSuperior(timeframe);
         const velasSuperior = await precioService.getVelas('BTC', timeframeSuperior, 100);
-        
+
         if (velasSuperior.length < 50) {
             console.log(`No hay suficientes datos del timeframe superior ${timeframeSuperior}`);
             return null;
@@ -39,10 +39,10 @@ async function generarSenal(timeframe = '1h') {
 
         // Calcular indicadores del timeframe principal
         const indicadores = indicadorService.calcularIndicadores(velas);
-        
+
         // Calcular indicadores del timeframe superior para filtro de tendencia
         const indicadoresSuperior = indicadorService.calcularIndicadores(velasSuperior);
-        
+
         // Análisis de tendencia general (timeframe superior)
         let tendenciaGeneral = 'neutral';
         if (indicadoresSuperior.ema20 > indicadoresSuperior.ema50 && indicadoresSuperior.ema50 > indicadoresSuperior.ema200) {
@@ -50,7 +50,7 @@ async function generarSenal(timeframe = '1h') {
         } else if (indicadoresSuperior.ema20 < indicadoresSuperior.ema50 && indicadoresSuperior.ema50 < indicadoresSuperior.ema200) {
             tendenciaGeneral = 'bajista';
         }
-        
+
         console.log(`📊 Timeframe: ${timeframe} | Tendencia general (${timeframeSuperior}): ${tendenciaGeneral.toUpperCase()}`);
 
         // Sistema de puntuación
@@ -139,14 +139,14 @@ async function generarSenal(timeframe = '1h') {
         const rangoVela = ultimaVela.high - ultimaVela.low;
         const esVelaAlcista = ultimaVela.close > ultimaVela.open;
         const esVelaBajista = ultimaVela.close < ultimaVela.open;
-        
+
         // Contexto de tendencia
         const enTendenciaBajista = precioActual < indicadores.ema50;
         const enTendenciaAlcista = precioActual > indicadores.ema50;
 
         // Martillo alcista (mecha inferior larga, cuerpo pequeño arriba, vela alcista, en tendencia bajista)
-        if (mechaInfUltima > 2 * cuerpoUltima && 
-            mechaSupUltima < cuerpoUltima * 0.5 && 
+        if (mechaInfUltima > 2 * cuerpoUltima &&
+            mechaSupUltima < cuerpoUltima * 0.5 &&
             cuerpoUltima > rangoVela * 0.1 && // Cuerpo mínimo 10% del rango
             esVelaAlcista &&
             enTendenciaBajista) {
@@ -155,8 +155,8 @@ async function generarSenal(timeframe = '1h') {
         }
 
         // Estrella fugaz bajista (mecha superior larga, cuerpo pequeño abajo, vela bajista, en tendencia alcista)
-        if (mechaSupUltima > 2 * cuerpoUltima && 
-            mechaInfUltima < cuerpoUltima * 0.5 && 
+        if (mechaSupUltima > 2 * cuerpoUltima &&
+            mechaInfUltima < cuerpoUltima * 0.5 &&
             cuerpoUltima > rangoVela * 0.1 && // Cuerpo mínimo 10% del rango
             esVelaBajista &&
             enTendenciaAlcista) {
@@ -212,45 +212,45 @@ async function generarSenal(timeframe = '1h') {
             long: razonesLong.filter(r => r.includes('EMA') || r.includes('MACD')).length,
             short: razonesShort.filter(r => r.includes('EMA') || r.includes('MACD')).length
         };
-        
+
         const categoriaMomentum = {
             long: razonesLong.filter(r => r.includes('RSI') || r.includes('Volumen')).length,
             short: razonesShort.filter(r => r.includes('RSI') || r.includes('Volumen')).length
         };
-        
+
         const categoriaPatrones = {
             long: razonesLong.filter(r => r.includes('Patrón') || r.includes('Bollinger')).length,
             short: razonesShort.filter(r => r.includes('Patrón') || r.includes('Bollinger')).length
         };
 
         // Contar categorías confirmadas (al menos 1 razón en la categoría)
-        const categoriasLong = (categoriaTendencia.long > 0 ? 1 : 0) + 
-                               (categoriaMomentum.long > 0 ? 1 : 0) + 
-                               (categoriaPatrones.long > 0 ? 1 : 0);
-        
-        const categoriasShort = (categoriaTendencia.short > 0 ? 1 : 0) + 
-                                (categoriaMomentum.short > 0 ? 1 : 0) + 
-                                (categoriaPatrones.short > 0 ? 1 : 0);
+        const categoriasLong = (categoriaTendencia.long > 0 ? 1 : 0) +
+            (categoriaMomentum.long > 0 ? 1 : 0) +
+            (categoriaPatrones.long > 0 ? 1 : 0);
+
+        const categoriasShort = (categoriaTendencia.short > 0 ? 1 : 0) +
+            (categoriaMomentum.short > 0 ? 1 : 0) +
+            (categoriaPatrones.short > 0 ? 1 : 0);
 
         // Determinar tipo de señal con sistema de confirmación
         let tipoSenal = null;
         let razones = [];
         let probabilidad = 0;
 
-        // Requiere al menos 2 de 3 categorías alineadas + puntuación mínima 40
-        if (categoriasLong >= 2 && razonesLong.length > razonesShort.length && puntuacion >= 40) {
+        // Requiere al menos 2 de 3 categorías alineadas + puntuación mínima 30
+        if (categoriasLong >= 2 && razonesLong.length > razonesShort.length && puntuacion >= 30) {
             tipoSenal = 'LONG';
             razones = razonesLong;
             // Aplicar factor de volumen si hay volumen alto
             probabilidad = Math.min(95, Math.round(puntuacion * factorVolumen));
-        } else if (categoriasShort >= 2 && razonesShort.length > razonesLong.length && puntuacion >= 40) {
+        } else if (categoriasShort >= 2 && razonesShort.length > razonesLong.length && puntuacion >= 30) {
             tipoSenal = 'SHORT';
             razones = razonesShort;
             probabilidad = Math.min(95, Math.round(puntuacion * factorVolumen));
         }
 
         // Si no hay señal clara, retornar null
-        if (!tipoSenal || razones.length < 3) {
+        if (!tipoSenal || razones.length < 2) {
             console.log(`Señal rechazada - Puntuación: ${puntuacion}, Razones: ${razones.length}, Categorías: ${tipoSenal === 'LONG' ? categoriasLong : categoriasShort}`);
             return null;
         }
@@ -263,9 +263,9 @@ async function generarSenal(timeframe = '1h') {
             console.log(`❌ Señal LONG rechazada - Tendencia general es BAJISTA`);
             return null;
         }
-        
+
         // Bonus si está alineada con tendencia fuerte
-        if ((tendenciaGeneral === 'alcista' && tipoSenal === 'LONG') || 
+        if ((tendenciaGeneral === 'alcista' && tipoSenal === 'LONG') ||
             (tendenciaGeneral === 'bajista' && tipoSenal === 'SHORT')) {
             probabilidad = Math.min(95, probabilidad + 5);
             razones.push(`Alineada con tendencia ${tendenciaGeneral} 4h`);
