@@ -130,12 +130,17 @@ async function verificarSenal(senal, precioActual) {
 
         // Si hay resultado, guardarlo
         if (resultado !== 'pendiente') {
+            // Convertir valores para tabla resultado_senales (usa 'ganadora'/'perdedora')
+            const resultadoParaTabla = resultado === 'ganancia' ? 'ganadora' : 
+                                       resultado === 'perdida' ? 'perdedora' : 
+                                       'pendiente';
+            
             await db.query(`
                 INSERT INTO resultado_senales (senal_id, resultado, precio_alcanzado, tipo_cierre)
                 VALUES (?, ?, ?, ?)
-            `, [senal.id, resultado, precioAlcanzado, tipoCierre]);
+            `, [senal.id, resultadoParaTabla, precioAlcanzado, tipoCierre]);
 
-            // Actualizar estado de la señal
+            // Actualizar estado de la señal (tabla senales usa 'ganancia'/'perdida')
             await db.query(`
                 UPDATE senales 
                 SET estado = 'cerrada', resultado = ?, precio_cierre = ?
