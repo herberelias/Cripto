@@ -117,14 +117,14 @@ async function verificarSenal(senal, precioActual) {
                 gananciaParcial = ((senal.precio_entrada - senal.stop_loss) / senal.precio_entrada * 100);
             }
         }
-        
+
         // Verificar si expiró
         if (resultado === 'pendiente' && new Date() > new Date(senal.fecha_expiracion)) {
             resultado = 'perdida';
             tipoCierre = 'expiracion';
             precioAlcanzado = precioActual;
             porcentajeCerrado = 100;
-            gananciaParcial = senal.tipo === 'LONG' ? 
+            gananciaParcial = senal.tipo === 'LONG' ?
                 ((precioActual - senal.precio_entrada) / senal.precio_entrada * 100) :
                 ((senal.precio_entrada - precioActual) / senal.precio_entrada * 100);
         }
@@ -133,10 +133,10 @@ async function verificarSenal(senal, precioActual) {
         if (resultado !== 'pendiente') {
             try {
                 // Convertir valores para tabla resultado_senales (usa 'ganadora'/'perdedora')
-                const resultadoParaTabla = resultado === 'ganancia' ? 'ganadora' : 
-                                           resultado === 'perdida' ? 'perdedora' : 
-                                           'pendiente';
-                
+                const resultadoParaTabla = resultado === 'ganancia' ? 'ganadora' :
+                    resultado === 'perdida' ? 'perdedora' :
+                        'pendiente';
+
                 await db.query(`
                     INSERT INTO resultado_senales (senal_id, resultado, precio_alcanzado, tipo_cierre)
                     VALUES (?, ?, ?, ?)
@@ -182,11 +182,11 @@ async function actualizarEstadisticas() {
             const [stats] = await db.query(`
                 SELECT 
                     COUNT(*) as total,
-                    SUM(CASE WHEN r.resultado = 'ganancia' THEN 1 ELSE 0 END) as ganadoras,
-                    SUM(CASE WHEN r.resultado = 'perdida' THEN 1 ELSE 0 END) as perdedoras,
-                    AVG(CASE WHEN r.resultado = 'ganancia' THEN 
+                    SUM(CASE WHEN r.resultado = 'ganadora' THEN 1 ELSE 0 END) as ganadoras,
+                    SUM(CASE WHEN r.resultado = 'perdedora' THEN 1 ELSE 0 END) as perdedoras,
+                    AVG(CASE WHEN r.resultado = 'ganadora' THEN 
                         ABS(s.precio_entrada - r.precio_alcanzado) ELSE 0 END) as ganancia_prom,
-                    AVG(CASE WHEN r.resultado = 'perdida' THEN 
+                    AVG(CASE WHEN r.resultado = 'perdedora' THEN 
                         ABS(s.precio_entrada - r.precio_alcanzado) ELSE 0 END) as perdida_prom
                 FROM senales s
                 INNER JOIN indicadores_senal i ON s.id = i.senal_id
@@ -246,8 +246,8 @@ async function actualizarRendimientoDiario() {
     const [stats] = await db.query(`
         SELECT 
             COUNT(*) as total,
-            SUM(CASE WHEN r.resultado = 'ganancia' THEN 1 ELSE 0 END) as ganadoras,
-            SUM(CASE WHEN r.resultado = 'perdida' THEN 1 ELSE 0 END) as perdedoras
+            SUM(CASE WHEN r.resultado = 'ganadora' THEN 1 ELSE 0 END) as ganadoras,
+            SUM(CASE WHEN r.resultado = 'perdedora' THEN 1 ELSE 0 END) as perdedoras
         FROM resultado_senales r
         WHERE DATE(r.fecha_verificacion) = ?
     `, [hoy]);
@@ -278,19 +278,19 @@ async function actualizarRendimientoDiario() {
 function calcularPositionSize(capitalTotal, riesgoPorOperacion, precioEntrada, stopLoss) {
     // Calcular cuánto dinero estamos dispuestos a perder
     const dineroEnRiesgo = capitalTotal * (riesgoPorOperacion / 100);
-    
+
     // Calcular cuánto perdemos por unidad
     const perdidaPorUnidad = Math.abs(precioEntrada - stopLoss);
-    
+
     // Calcular cuántas unidades comprar
     const unidades = dineroEnRiesgo / perdidaPorUnidad;
-    
+
     // Calcular inversión total
     const inversionTotal = unidades * precioEntrada;
-    
+
     // Validar que no excedamos el capital
     const porcentajeCapital = (inversionTotal / capitalTotal) * 100;
-    
+
     return {
         unidades: parseFloat(unidades.toFixed(8)),
         inversionTotal: parseFloat(inversionTotal.toFixed(2)),
