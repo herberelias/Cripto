@@ -131,27 +131,37 @@ async function verificarSenal(senal, precioActual) {
 
         // Si hay resultado, guardarlo
         if (resultado !== 'pendiente') {
-            // Convertir valores para tabla resultado_senales (usa 'ganadora'/'perdedora')
-            const resultadoParaTabla = resultado === 'ganancia' ? 'ganadora' : 
-                                       resultado === 'perdida' ? 'perdedora' : 
-                                       'pendiente';
-            
-            await db.query(`
-                INSERT INTO resultado_senales (senal_id, resultado, precio_alcanzado, tipo_cierre)
-                VALUES (?, ?, ?, ?)
-            `, [senal.id, resultadoParaTabla, precioAlcanzado, tipoCierre]);
+            try {
+                // Convertir valores para tabla resultado_senales (usa 'ganadora'/'perdedora')
+                const resultadoParaTabla = resultado === 'ganancia' ? 'ganadora' : 
+                                           resultado === 'perdida' ? 'perdedora' : 
+                                           'pendiente';
+                
+                await db.query(`
+                    INSERT INTO resultado_senales (senal_id, resultado, precio_alcanzado, tipo_cierre)
+                    VALUES (?, ?, ?, ?)
+                `, [senal.id, resultadoParaTabla, precioAlcanzado, tipoCierre]);
 
-            // Actualizar estado de la señal (tabla senales usa 'ganancia'/'perdida')
-            await db.query(`
-                UPDATE senales 
-                SET estado = 'cerrada', resultado = ?, precio_cierre = ?
-                WHERE id = ?
-            `, [resultado, precioAlcanzado, senal.id]);
+                // Actualizar estado de la señal (tabla senales usa 'ganancia'/'perdida')
+                await db.query(`
+                    UPDATE senales 
+                    SET estado = 'cerrada', resultado = ?, precio_cierre = ?
+                    WHERE id = ?
+                `, [resultado, precioAlcanzado, senal.id]);
 
-            const emoji = resultado === 'ganancia' ? '✅' : '❌';
-            const signo = gananciaParcial >= 0 ? '+' : '';
-            console.log(`${emoji} Señal #${senal.id} ${senal.tipo} - ${resultado.toUpperCase()}`);
-            console.log(`   ${tipoCierre} | Cerrado: ${porcentajeCerrado}% | Ganancia: ${signo}${gananciaParcial.toFixed(2)}%`);
+                const emoji = resultado === 'ganancia' ? '✅' : '❌';
+                const signo = gananciaParcial >= 0 ? '+' : '';
+                console.log(`${emoji} Señal #${senal.id} ${senal.tipo} - ${resultado.toUpperCase()}`);
+                console.log(`   ${tipoCierre} | Cerrado: ${porcentajeCerrado}% | Ganancia: ${signo}${gananciaParcial.toFixed(2)}%`);
+            } catch (insertError) {
+                // Si falla el INSERT (señal ya procesada o error de ENUM), cerrar la señal silenciosamente
+                console.log(`⚠️ Señal #${senal.id} ya procesada o con error, cerrando...`);
+                await db.query(`
+                    UPDATE senales 
+                    SET estado = 'cerrada'
+                    WHERE id = ?
+                `, [senal.id]);
+            }
         }
     } catch (error) {
         console.error(`Error verificando señal #${senal.id}:`, error);
