@@ -12,13 +12,14 @@ async function verificarSenales() {
         const precioActual = await precioService.getPrecioActual();
         const precio = precioActual.precio;
 
-        // Obtener señales activas que no han sido verificadas
+        // Obtener señales activas que no han sido verificadas y no han expirado con error
         const [senales] = await db.query(`
             SELECT s.* 
             FROM senales s
             LEFT JOIN resultado_senales r ON s.id = r.senal_id
             WHERE s.estado = 'activa' 
             AND r.id IS NULL
+            AND s.fecha_expiracion > NOW()
             ORDER BY s.fecha_creacion ASC
         `);
 
