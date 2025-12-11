@@ -2,6 +2,21 @@ const db = require('../config/database');
 const precioService = require('./precioService');
 const indicadorService = require('./indicadorService');
 
+/**
+ * Obtener timeframe superior según el timeframe principal
+ * Para análisis de tendencia general
+ */
+function getTimeframeSuperior(timeframe) {
+    const map = {
+        '15m': '1h',   // 15min analiza tendencia en 1h
+        '30m': '4h',   // 30min analiza tendencia en 4h
+        '1h': '4h',    // 1h analiza tendencia en 4h
+        '4h': '1d',    // 4h analiza tendencia en 1d
+        '1d': '1d'     // 1d sin timeframe superior
+    };
+    return map[timeframe] || '4h';
+}
+
 // Generar señal basada en indicadores técnicos
 async function generarSenal(timeframe = '1h') {
     try {
@@ -9,15 +24,16 @@ async function generarSenal(timeframe = '1h') {
         const velas = await precioService.getVelas('BTC', timeframe, 200);
 
         if (velas.length < 200) {
-            console.log('No hay suficientes datos para análisis');
+            console.log(`No hay suficientes datos para análisis ${timeframe}`);
             return null;
         }
 
-        // Obtener velas de timeframe superior (4h) para análisis de tendencia general
-        const velas4h = await precioService.getVelas('BTC', '4h', 100);
+        // Obtener timeframe superior dinámico según el principal
+        const timeframeSuperior = getTimeframeSuperior(timeframe);
+        const velasSuperior = await precioService.getVelas('BTC', timeframeSuperior, 100);
         
-        if (velas4h.length < 50) {
-            console.log('No hay suficientes datos del timeframe superior');
+        if (velasSuperior.length < 50) {
+            console.log(`No hay suficientes datos del timeframe superior ${timeframeSuperior}`);
             return null;
         }
 
@@ -25,17 +41,17 @@ async function generarSenal(timeframe = '1h') {
         const indicadores = indicadorService.calcularIndicadores(velas);
         
         // Calcular indicadores del timeframe superior para filtro de tendencia
-        const indicadores4h = indicadorService.calcularIndicadores(velas4h);
+        const indicadoresSuperior = indicadorService.calcularIndicadores(velasSuperior);
         
         // Análisis de tendencia general (timeframe superior)
         let tendenciaGeneral = 'neutral';
-        if (indicadores4h.ema20 > indicadores4h.ema50 && indicadores4h.ema50 > indicadores4h.ema200) {
+        if (indicadoresSuperior.ema20 > indicadoresSuperior.ema50 && indicadoresSuperior.ema50 > indicadoresSuperior.ema200) {
             tendenciaGeneral = 'alcista';
-        } else if (indicadores4h.ema20 < indicadores4h.ema50 && indicadores4h.ema50 < indicadores4h.ema200) {
+        } else if (indicadoresSuperior.ema20 < indicadoresSuperior.ema50 && indicadoresSuperior.ema50 < indicadoresSuperior.ema200) {
             tendenciaGeneral = 'bajista';
         }
         
-        console.log(`📊 Tendencia general (4h): ${tendenciaGeneral.toUpperCase()}`);
+        console.log(`📊 Timeframe: ${timeframe} | Tendencia general (${timeframeSuperior}): ${tendenciaGeneral.toUpperCase()}`);
 
         // Sistema de puntuación
         let puntuacion = 0;

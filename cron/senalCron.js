@@ -4,9 +4,12 @@ const { activarTrailingStop } = require('../services/trailingStopService');
 const logger = require('../utils/logger');
 
 /**
- * Sistema Híbrido Avanzado de Generación de Señales:
+ * Sistema Híbrido Multi-Timeframe de Generación de Señales:
  * 
- * 1. GENERACIÓN (cada 1 hora al cierre de vela):
+ * 1. GENERACIÓN (múltiples timeframes):
+ *    - 30m: Cada 30 minutos (day trading)
+ *    - 1h: Cada hora (swing intraday)
+ *    - 4h: Cada 4 horas (swing multiday)
  *    - Analiza velas completas (datos fiables)
  *    - Indicadores calculados correctamente
  *    - Genera señales de calidad profesional
@@ -17,31 +20,51 @@ const logger = require('../utils/logger');
  *    - Activa trailing stop loss para proteger ganancias
  *    - Puede invalidar señales si contexto cambia drásticamente
  */
+
+/**
+ * Función auxiliar para generar y guardar señal de un timeframe
+ */
+async function generarYGuardarSenal(timeframe) {
+    try {
+        logger.section(`GENERACIÓN DE SEÑALES (cierre de vela ${timeframe})`);
+
+        const senal = await generarSenal(timeframe);
+
+        if (senal) {
+            const senalId = await guardarSenal(senal);
+            logger.senal(senal.tipo, `Nueva señal ${timeframe} guardada con ID: ${senalId}`);
+            logger.info(`Probabilidad: ${senal.probabilidad}% | R:B: ${senal.ratioRB}`);
+            logger.info(`Entrada: $${senal.precioEntrada} | SL: $${senal.stopLoss} | TP3: $${senal.takeProfit3}`);
+        } else {
+            logger.info(`No se generó señal ${timeframe} (criterios no cumplidos)`);
+        }
+
+    } catch (error) {
+        logger.error(`Error en generación de señales ${timeframe}:`, error);
+    }
+}
+
 function iniciarCronSenales() {
-    logger.section('🚀 SISTEMA DE SEÑALES INICIADO');
-    logger.info('📊 Generación: cada 1 hora (minuto 0)');
+    logger.section('🚀 SISTEMA DE SEÑALES MULTI-TIMEFRAME INICIADO');
+    logger.info('📊 Generación 30m: cada 30 minutos');
+    logger.info('📊 Generación 1h: cada hora');
+    logger.info('📊 Generación 4h: cada 4 horas');
     logger.info('👁️  Monitoreo: cada 5 minutos');
     logger.info('🔄 Trailing Stop: automático en ganancias');
 
-    // GENERACIÓN: Cada hora al cierre de vela
+    // GENERACIÓN 30 MINUTOS: Cada 30 minutos (minuto 0 y 30)
+    cron.schedule('0,30 * * * *', async () => {
+        await generarYGuardarSenal('30m');
+    });
+
+    // GENERACIÓN 1 HORA: Cada hora al cierre de vela (minuto 0)
     cron.schedule('0 * * * *', async () => {
-        try {
-            logger.section('GENERACIÓN DE SEÑALES (cierre de vela 1h)');
+        await generarYGuardarSenal('1h');
+    });
 
-            const senal = await generarSenal('1h');
-
-            if (senal) {
-                const senalId = await guardarSenal(senal);
-                logger.senal(senal.tipo, `Nueva señal guardada con ID: ${senalId}`);
-                logger.info(`Probabilidad: ${senal.probabilidad}% | R:B: ${senal.ratioRB}`);
-                logger.info(`Entrada: $${senal.precioEntrada} | SL: $${senal.stopLoss} | TP3: $${senal.takeProfit3}`);
-            } else {
-                logger.info('No se generó señal (criterios no cumplidos)');
-            }
-
-        } catch (error) {
-            logger.error('Error en generación de señales:', error);
-        }
+    // GENERACIÓN 4 HORAS: Cada 4 horas (minuto 0 de las horas 0, 4, 8, 12, 16, 20)
+    cron.schedule('0 */4 * * *', async () => {
+        await generarYGuardarSenal('4h');
     });
 
     // MONITOREO: Cada 5 minutos (validación + trailing stop)
