@@ -77,19 +77,22 @@ function iniciarCronSenales() {
         await generarYGuardarSenal('4h');
     });
 
-    // MONITOREO: Cada 5 minutos (validación + trailing stop)
+    // MONITOREO + ANÁLISIS DINÁMICO: Cada 5 minutos
     cron.schedule('*/5 * * * *', async () => {
         try {
-            logger.debug('Monitoreo: validando señales activas y trailing stop...');
+            // 1. Análisis dinámico del mercado (detecta oportunidades)
+            await analizarMercadoDinamico();
 
-            // Validar que las señales activas sigan siendo válidas
+
+            // 2. Validar que las señales activas sigan siendo válidas
             await validarSenalesActivas();
 
-            // Activar trailing stop para señales en ganancia
+
+            // 3. Activar trailing stop para señales en ganancia
             await activarTrailingStop();
 
         } catch (error) {
-            logger.error('Error en monitoreo de señales:', error);
+            logger.error('Error en monitoreo y análisis dinámico:', error);
         }
     });
 }
