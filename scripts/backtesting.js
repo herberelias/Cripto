@@ -115,7 +115,7 @@ function verificarResultado(senal, velasFuturas) {
             // Verificar TP
             if (vela.high >= senal.takeProfit) {
                 return {
-                    resultado: 'ganadora',
+                    resultado: 'ganancia',
                     precioSalida: senal.takeProfit,
                     ganancia: senal.takeProfit - senal.precioEntrada
                 };
@@ -123,7 +123,7 @@ function verificarResultado(senal, velasFuturas) {
             // Verificar SL
             if (vela.low <= senal.stopLoss) {
                 return {
-                    resultado: 'perdedora',
+                    resultado: 'perdida',
                     precioSalida: senal.stopLoss,
                     ganancia: senal.stopLoss - senal.precioEntrada
                 };
@@ -132,7 +132,7 @@ function verificarResultado(senal, velasFuturas) {
             // Verificar TP
             if (vela.low <= senal.takeProfit) {
                 return {
-                    resultado: 'ganadora',
+                    resultado: 'ganancia',
                     precioSalida: senal.takeProfit,
                     ganancia: senal.precioEntrada - senal.takeProfit
                 };
@@ -140,7 +140,7 @@ function verificarResultado(senal, velasFuturas) {
             // Verificar SL
             if (vela.high >= senal.stopLoss) {
                 return {
-                    resultado: 'perdedora',
+                    resultado: 'perdida',
                     precioSalida: senal.stopLoss,
                     ganancia: senal.precioEntrada - senal.stopLoss
                 };
@@ -148,9 +148,9 @@ function verificarResultado(senal, velasFuturas) {
         }
     }
 
-    // Si no alcanzó ni TP ni SL, considerar perdedora
+    // Si no alcanzó ni TP ni SL, considerar perdida
     return {
-        resultado: 'perdedora',
+        resultado: 'perdida',
         precioSalida: velasFuturas[velasFuturas.length - 1].close,
         ganancia: senal.tipo === 'LONG'
             ? velasFuturas[velasFuturas.length - 1].close - senal.precioEntrada
@@ -207,7 +207,7 @@ async function ejecutarBacktesting() {
 
                 // Registrar resultado
                 resultados.totalSenales++;
-                if (resultado.resultado === 'ganadora') {
+                if (resultado.resultado === 'ganancia') {
                     resultados.senalesGanadoras++;
                 } else {
                     resultados.senalesPerdedoras++;
@@ -215,7 +215,7 @@ async function ejecutarBacktesting() {
 
                 // Por tipo
                 resultados.porTipo[senal.tipo].total++;
-                if (resultado.resultado === 'ganadora') {
+                if (resultado.resultado === 'ganancia') {
                     resultados.porTipo[senal.tipo].ganadoras++;
                 }
 
@@ -225,7 +225,7 @@ async function ejecutarBacktesting() {
                     resultados.porRango[rango] = { total: 0, ganadoras: 0 };
                 }
                 resultados.porRango[rango].total++;
-                if (resultado.resultado === 'ganadora') {
+                if (resultado.resultado === 'ganancia') {
                     resultados.porRango[rango].ganadoras++;
                 }
 
