@@ -53,7 +53,7 @@ async function verificarSenal(senal, precioActual) {
             // TP3 - Cerrar 100% (objetivo completo)
             if (precioActual >= senal.take_profit_3) {
                 resultado = 'ganancia';
-                tipoCierre = 'take_profit_3';
+                tipoCierre = 'take_profit';
                 precioAlcanzado = senal.take_profit_3;
                 porcentajeCerrado = 100;
                 gananciaParcial = ((senal.take_profit_3 - senal.precio_entrada) / senal.precio_entrada * 100);
@@ -61,7 +61,7 @@ async function verificarSenal(senal, precioActual) {
             // TP2 - Cerrar 60% adicional (90% total)
             else if (precioActual >= senal.take_profit_2) {
                 resultado = 'ganancia';
-                tipoCierre = 'take_profit_2';
+                tipoCierre = 'take_profit';
                 precioAlcanzado = senal.take_profit_2;
                 porcentajeCerrado = 90;
                 gananciaParcial = ((senal.take_profit_2 - senal.precio_entrada) / senal.precio_entrada * 100) * 0.9;
@@ -69,7 +69,7 @@ async function verificarSenal(senal, precioActual) {
             // TP1 - Cerrar 30% (asegurar ganancias)
             else if (precioActual >= senal.take_profit_1) {
                 resultado = 'ganancia';
-                tipoCierre = 'take_profit_1';
+                tipoCierre = 'take_profit';
                 precioAlcanzado = senal.take_profit_1;
                 porcentajeCerrado = 30;
                 gananciaParcial = ((senal.take_profit_1 - senal.precio_entrada) / senal.precio_entrada * 100) * 0.3;
@@ -86,7 +86,7 @@ async function verificarSenal(senal, precioActual) {
             // TP3 - Cerrar 100%
             if (precioActual <= senal.take_profit_3) {
                 resultado = 'ganancia';
-                tipoCierre = 'take_profit_3';
+                tipoCierre = 'take_profit';
                 precioAlcanzado = senal.take_profit_3;
                 porcentajeCerrado = 100;
                 gananciaParcial = ((senal.precio_entrada - senal.take_profit_3) / senal.precio_entrada * 100);
@@ -94,7 +94,7 @@ async function verificarSenal(senal, precioActual) {
             // TP2 - Cerrar 60% adicional
             else if (precioActual <= senal.take_profit_2) {
                 resultado = 'ganancia';
-                tipoCierre = 'take_profit_2';
+                tipoCierre = 'take_profit';
                 precioAlcanzado = senal.take_profit_2;
                 porcentajeCerrado = 90;
                 gananciaParcial = ((senal.precio_entrada - senal.take_profit_2) / senal.precio_entrada * 100) * 0.9;
@@ -102,7 +102,7 @@ async function verificarSenal(senal, precioActual) {
             // TP1 - Cerrar 30%
             else if (precioActual <= senal.take_profit_1) {
                 resultado = 'ganancia';
-                tipoCierre = 'take_profit_1';
+                tipoCierre = 'take_profit';
                 precioAlcanzado = senal.take_profit_1;
                 porcentajeCerrado = 30;
                 gananciaParcial = ((senal.precio_entrada - senal.take_profit_1) / senal.precio_entrada * 100) * 0.3;
