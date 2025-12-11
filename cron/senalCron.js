@@ -1,12 +1,13 @@
 const cron = require('node-cron');
 const { generarSenal, guardarSenal, validarSenalesActivas } = require('../services/generadorSenales');
 const { activarTrailingStop } = require('../services/trailingStopService');
+const { analizarMercadoDinamico } = require('../services/analisisDinamicoService');
 const logger = require('../utils/logger');
 
 /**
  * Sistema Híbrido Multi-Timeframe de Generación de Señales:
  * 
- * 1. GENERACIÓN (múltiples timeframes):
+ * 1. GENERACIÓN PROGRAMADA (múltiples timeframes):
  *    - 30m: Cada 30 minutos (day trading)
  *    - 1h: Cada hora (swing intraday)
  *    - 4h: Cada 4 horas (swing multiday)
@@ -14,7 +15,15 @@ const logger = require('../utils/logger');
  *    - Indicadores calculados correctamente
  *    - Genera señales de calidad profesional
  * 
- * 2. MONITOREO (cada 5 minutos):
+ * 2. ANÁLISIS DINÁMICO (cada 5 minutos):
+ *    - Detecta picos de volumen (>150% promedio)
+ *    - Detecta movimientos de precio (>1% en 5 min)
+ *    - Detecta cruces de indicadores
+ *    - Detecta RSI en zonas extremas
+ *    - Genera señales oportunistas en tiempo real
+ *    - Sistema anti-duplicados
+ * 
+ * 3. MONITOREO (cada 5 minutos):
  *    - Verifica precios en tiempo real
  *    - Valida si señales activas siguen siendo válidas
  *    - Activa trailing stop loss para proteger ganancias
@@ -49,6 +58,7 @@ function iniciarCronSenales() {
     logger.info('📊 Generación 30m: cada 30 minutos');
     logger.info('📊 Generación 1h: cada hora');
     logger.info('📊 Generación 4h: cada 4 horas');
+    logger.info('🔍 Análisis dinámico: cada 5 minutos');
     logger.info('👁️  Monitoreo: cada 5 minutos');
     logger.info('🔄 Trailing Stop: automático en ganancias');
 
@@ -71,10 +81,10 @@ function iniciarCronSenales() {
     cron.schedule('*/5 * * * *', async () => {
         try {
             logger.debug('Monitoreo: validando señales activas y trailing stop...');
-            
+
             // Validar que las señales activas sigan siendo válidas
             await validarSenalesActivas();
-            
+
             // Activar trailing stop para señales en ganancia
             await activarTrailingStop();
 
